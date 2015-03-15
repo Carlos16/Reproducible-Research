@@ -1,0 +1,140 @@
+---
+title: "1st Peer Assesment"
+author: "Carlos"
+date: "Saturday, March 14, 2015"
+output: html_document
+---
+
+###Loading Data
+This loads the data
+```{r}
+AMD <- read.csv('repdata-data-activity\\activity.csv')
+```
+
+###Mean of Steps per day
+
+```{r}
+NumSteps <- tapply(AMD$steps,AMD$date,sum,na.rm=TRUE)
+hist(NumSteps)
+```
+
+```{r mean}
+meanS <-mean(NumSteps)
+```
+
+```{r median}
+medianS <- median(NumSteps)
+```
+
+The mean is :`r meanS`, and the median is : `r medianS`
+
+##Average daily activity pattern
+
+This constructs a time series of the data
+```{r}
+DailyPattern<- tapply(AMD$steps,AMD$interval,mean,na.rm = TRUE)
+plot(DailyPattern,type = 'l' ,col='red',xlab="Intervals",ylab="Average number of steps")
+```
+
+It is seen that the maximum average is reach around the 100 interval , we will calculate the exact number with the following code:
+```{r}
+Index <- which.max(DailyPattern)
+Tinterval <- AMD$interval[Index]
+```
+From which the maximum average of number of steps is reach at the `r Index` interval which comprises the  `r Tinterval`- `r Tinterval - 5` minutes from the beginning of the measurement.
+
+
+## Imputting missing values
+
+```{r}
+Nas <- sum(is.na(AMD$steps))
+```
+The number of missing values is `r Nas`.  
+We will now replace each NAs with the *mean* number of the respective interval in which it occurs.
+
+```{r}
+fillin <- function(C,i){
+  return(C[[as.character(i)]])
+}
+
+newSteps <- AMD$steps
+for(i in (1:length(newSteps))){
+  t = newSteps[i]
+  if(is.na(t)){
+    interval = AMD$interval[i]
+    newSteps[i]= fillin(DailyPattern,interval)
+  }
+}
+```
+
+Now we create a new data set, updating the *steps* column
+
+```{r}
+newData<- AMD
+newData$steps <- newSteps
+```
+
+We will now recompute the distribution of steps and the mean and median
+```{r}
+newNumSteps <- tapply(newData$steps,newData$date,sum)
+hist(newNumSteps)
+
+newMean <- mean(newNumSteps)
+newMedian<- median(newNumSteps)
+```
+
+The difference in the mean and median between both data sets is presented in the following table
+```{r}
+differences<-c(newMean-meanS,newMedian-medianS)
+Statistic<-c("mean","median")
+df <- data.frame(Statistic,differences)
+df
+```
+A positive change is observed in both cases.
+
+## Differences in activity patterns between weekdays and weekends
+
+
+This creates a new factor variable with levels *weekday* and *weekend* and add it to the new data set in the variable *day*
+
+```{r}
+Days<-weekdays(as.Date(AMD$date))
+weekDays<-c("Monday","Tuesday","Wednesday","Thrusday","Friday")
+
+F<-as.factor(!(Days %in% weekDays))
+
+levels(F) <- c("weekday","weekend")
+
+newData$day <- F
+
+WeekdaysData <- newData[newData$day == "weekday",]
+WeekendData <- newData[newData$day != "weekday",]
+```
+
+We will show to ways of creating the plots, one using base graphics and the other using ggplot2  
+
+###Base graphics
+```{r}
+par(mfrow = c(2,1) )
+
+AverageStepsWeekdays <- tapply(WeekdaysData$steps,WeekdaysData$interval,mean)
+AverageStepsWeekend <- tapply(WeekendData$steps,WeekendData$interval,mean)
+
+plot(AverageStepsWeekdays,type='l',ylab='Average steps',xlab='Intervals')
+plot(AverageStepsWeekend,type= 'l',ylab='Average steps',xlab='Intervals')
+```
+
+###ggplot2
+```{r}
+library(ggplot2)
+
+stat_sum_single <- function(fun, geom="point",colour="blue", ...) {
+  stat_summary(fun.y=fun, colour=colour, geom=geom, ...)
+}
+
+
+p <- ggplot(newData,aes(interval,steps)) + facet_grid(day~.) + geom_point(alpha = 0.00)
+p+ stat_sum_single(mean,geom="line",size=0.5) + coord_cartesian(ylim = c(-10, 300)) + labs(x="Intervals" , y = "Average steps")
+```
+
+

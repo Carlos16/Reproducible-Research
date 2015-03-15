@@ -5,4 +5,4 @@ This repository contains all the materials related to the coursera course on rep
 
 
 
-[1] http://www.biostat.jhsph.edu/~rpeng/
+[1]:http://www.biostat.jhsph.edu/~rpeng/
